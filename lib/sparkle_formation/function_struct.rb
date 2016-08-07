@@ -83,7 +83,8 @@ class SparkleFormation
           if(arg.respond_to?(:_dump))
             arg._dump
           elsif(arg.is_a?(::Symbol))
-            "'#{::Bogo::Utility.camel(arg.to_s, false)}'"
+            quote = __single_quote_strings ? "'" : '"'
+            "#{quote}#{::Bogo::Utility.camel(arg.to_s, false)}#{quote}"
           elsif(arg.is_a?(::String) && __single_quote_strings)
             "'#{arg}'"
           else
@@ -99,7 +100,14 @@ class SparkleFormation
             suffix
           ].compact
         )
-        root? ? "#{__anchor_start}#{internal}#{__anchor_stop}" : internal
+        if(root? || (!__single_anchor? && function_name))
+          if(!root? && __quote_nested_funcs?)
+            quote = __single_quote_strings ? "'" : '"'
+          end
+          "#{quote}#{__anchor_start}#{internal}#{__anchor_stop}#{quote}"
+        else
+          internal
+        end
       else
         suffix
       end
@@ -119,6 +127,15 @@ class SparkleFormation
           memo += ".#{item}"
         end
       end
+    end
+
+    def __quote_nested_funcs?
+      false
+    end
+
+    # @return [TrueClass] wrap in single anchor
+    def __single_anchor?
+      true
     end
 
     # @return [Class]
@@ -248,6 +265,47 @@ class SparkleFormation
     # @return [Class]
     def _klass
       ::SparkleFormation::GoogleStruct
+    end
+
+  end
+
+  # FunctionStruct for customized terraform functions
+  class TerraformStruct < FunctionStruct
+
+    SINGLE_ANCHOR = false
+
+    # @return [String] start character(s) used to anchor function call
+    def __anchor_start
+      '${'
+    end
+
+    # @return [String] stop character(s) used to anchor function call
+    def __anchor_stop
+      '}'
+    end
+
+    # @return [String] value to use when argument list is empty
+    def __empty_argument_list
+      ''
+    end
+
+    # @return [FalseClass] disable single quote string generation
+    def __single_quote_strings
+      false
+    end
+
+    # @return [FalseClass] wrap every structure in anchors
+    def __single_anchor?
+      false
+    end
+
+    def __quote_nested_funcs?
+      true
+    end
+
+    # @return [Class]
+    def _klass
+      ::SparkleFormation::TerraformStruct
     end
 
   end
